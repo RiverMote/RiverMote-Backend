@@ -207,26 +207,27 @@ app.get("/api/commands", requireAuth, (req: Request, res: Response) => {
 
 // POST /api/commands  -> send a command to a device, with optional payload
 app.post("/api/commands", requireAuth, (req: Request, res: Response) => {
-    const { endpoint, cmd, payload } = (req.body ?? {}) as {
-        endpoint?: string;
-        cmd?: string;
-        payload?: unknown;
-    };
-
+    // Response body could have any shape (so we treat it as generic JSON),
+    // but we require at least endpoint and cmd to be present and valid
+    const body = (req.body ?? {}) as ParsedJSON;
+    // Ensure we have a valid endpoint and cmd
+    const endpoint = typeof body.endpoint === "string" ? body.endpoint : undefined;
+    const cmd = typeof body.cmd === "string" ? body.cmd : undefined;
     if (!endpoint || !cmd) {
         return res.status(400).json({ error: "endpoint and cmd required" });
     }
 
-    // Serialise payload to a string, or null if absent
-    const storedPayload: string | null =
-        payload == null ? null : typeof payload === "string" ? payload : JSON.stringify(payload);
+    // Remove endpoint and forward everything else exactly as received
+    const forwarded = { ...body } as ParsedJSON;
+    delete forwarded.endpoint;
+    const payload = JSON.stringify(forwarded);
 
-    const result = db.enqueueCommand({ endpoint, cmd, payload: storedPayload, createdAt: unixNow() });
+    // Enqueue the command in the database, which gives us a command ID we can use to track it
+    const result = db.enqueueCommand({ endpoint, cmd, payload, createdAt: unixNow() });
     const commandId = (result?.lastInsertRowid as number) ?? null;
 
-    // If no payload, wrap the command name so the device still gets valid JSON
-    const publishPayload = storedPayload ?? JSON.stringify({ cmd });
-    const sent = publishCommandNow(endpoint, publishPayload, commandId);
+    // Publish the forwarded object to MQTT
+    const sent = publishCommandNow(endpoint, payload, commandId);
 
     res.json({ ok: true, sent });
 });
