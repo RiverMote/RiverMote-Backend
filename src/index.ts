@@ -78,6 +78,23 @@ function parseLimit(raw: string | undefined, defaultValue: number, maxValue?: nu
 }
 
 /**
+ * Parse an optional number from a request body field.
+ * Accepts undefined/null (returns null) or a finite number.
+ */
+function parseOptionalNumber(raw: unknown): number | null | undefined {
+    if (raw === undefined) {
+        return undefined;
+    }
+    if (raw === null) {
+        return null;
+    }
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+        return raw;
+    }
+    return undefined;
+}
+
+/**
  * Map a raw MQTT data payload to a normalized Sample row.
  * @param endpoint MQTT topic endpoint the data came from
  * @param payload parsed JSON object from the MQTT message
@@ -87,7 +104,6 @@ function normalizeSample(endpoint: string, payload: ParsedJSON) {
     return {
         endpoint,
         ...payload,
-        charging: payload.charging ? 1 : 0, // Convert from JSON boolean to database integer
         unix_time: payload.unix_time ?? unixNow(),
         created_at: unixNow(),
     } as Sample;
@@ -161,12 +177,31 @@ const mqtt = startMqtt({
 });
 const app = express();
 app.use(express.json());
-app.enable("trust proxy");
+app.set("trust proxy", 1);
 
 /* API endpoints */
 
 app.get("/api/devices", (_req: Request, res: Response) => {
     res.json(db.listDevices());
+});
+
+// POST /api/devices/info  -> upsert device metadata
+app.post("/api/devices/info", requireAuth, (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as ParsedJSON;
+    const endpoint = typeof body.endpoint === "string" ? body.endpoint : undefined;
+    const name = typeof body.name === "string" ? body.name : undefined;
+    const lat = parseOptionalNumber(body.lat);
+    const lng = parseOptionalNumber(body.lng);
+
+    if (!endpoint || !name) {
+        return res.status(400).json({ error: "endpoint and name required" });
+    }
+    if (lat === undefined || lng === undefined) {
+        return res.status(400).json({ error: "lat and lng must be numbers or null" });
+    }
+
+    db.upsertDeviceInfo({ endpoint, name, lat, lng });
+    res.json({ ok: true });
 });
 
 // GET /api/health?endpoint=<id>  -> single device

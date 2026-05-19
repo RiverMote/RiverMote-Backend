@@ -9,8 +9,6 @@ export interface Sample {
     // Power
     battery_v: number | null;
     battery_pct: number | null;
-    vbus_v: number | null;
-    charging: 0 | 1;
     // Water
     water_temp: number | null;
     turbidity: number | null;
@@ -59,9 +57,21 @@ export interface SensorHealth {
 // A single device, identified by its endpoint and the timestamp of its most recent sample
 export interface Device {
     endpoint: string;
-    last_seen: number;
+    last_seen: number | null;
+    name: string;
+    lat: number | null;
+    lng: number | null;
 }
 
+// The arguments needed to create or update a device's info (name and location)
+export interface DeviceInfo {
+    endpoint: string;
+    name: string;
+    lat: number | null;
+    lng: number | null;
+}
+
+// The arguments needed to enqueue a new command for a device
 export interface EnqueueCommandArgs {
     endpoint: string;
     cmd: string;
@@ -78,14 +88,14 @@ export function createDb(dbPath: string) {
     const insertSample = db.prepare<Sample>(`
         INSERT INTO samples (
             endpoint, unix_time, millis,
-            battery_v, battery_pct, vbus_v, charging,
+            battery_v, battery_pct,
             water_temp, turbidity, tds,
             air_temp, humidity, air_velocity, ozone, uv, lum, baro,
             pm1_0, pm2_5, pm10,
             created_at
         ) VALUES (
             @endpoint, @unix_time, @millis,
-            @battery_v, @battery_pct, @vbus_v, @charging,
+            @battery_v, @battery_pct,
             @water_temp, @turbidity, @tds,
             @air_temp, @humidity, @air_velocity, @ozone, @uv, @lum, @baro,
             @pm1_0, @pm2_5, @pm10,
@@ -144,14 +154,23 @@ export function createDb(dbPath: string) {
     `);
 
     const selectDevices = db.prepare(`
-        SELECT endpoint, MAX(unix_time) AS last_seen
-        FROM samples
-        GROUP BY endpoint
-        ORDER BY last_seen DESC
+        SELECT
+            info.endpoint,
+            (
+                SELECT s.unix_time
+                FROM samples s
+                WHERE s.endpoint = info.endpoint
+                ORDER BY s.unix_time DESC
+                LIMIT 1
+            ) AS last_seen,
+            info.name,
+            info.lat,
+            info.lng
+        FROM device_info info
+        ORDER BY last_seen DESC;
     `);
 
-    // SQLite treats LIMIT -1 as "no limit",
-    // which lets a single prepared statement serve both the limited and unlimited cases
+    // SQLite treats LIMIT -1 as "no limit", which lets a single prepared statement serve both the limited and unlimited cases
     const selectSamples = db.prepare(`
         SELECT * FROM samples
         WHERE endpoint = ?
@@ -181,6 +200,15 @@ export function createDb(dbPath: string) {
         LIMIT ?
     `);
 
+    const upsertDeviceInfo = db.prepare<DeviceInfo>(`
+        INSERT INTO device_info (endpoint, name, lat, lng)
+        VALUES (@endpoint, @name, @lat, @lng)
+        ON CONFLICT(endpoint) DO UPDATE SET
+            name = excluded.name,
+            lat = excluded.lat,
+            lng = excluded.lng
+    `);
+
     return {
         insertSample: (sample: Sample) => insertSample.run(sample),
 
@@ -205,6 +233,8 @@ export function createDb(dbPath: string) {
         listHealth: (): SensorHealth[] => selectAllHealth.all() as SensorHealth[],
 
         listDevices: (): Device[] => selectDevices.all() as Device[],
+
+        upsertDeviceInfo: (info: DeviceInfo) => upsertDeviceInfo.run(info),
 
         // Pass null for limit to return all rows
         listSamples: (endpoint: string, limit: number | null): Sample[] =>
