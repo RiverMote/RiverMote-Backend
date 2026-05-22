@@ -100,7 +100,7 @@ export function createDb(dbPath: string) {
             @battery_v, @battery_pct,
             @water_temp, @turbidity, @tds,
             @air_temp, @humidity, @air_velocity, @ozone, @uv, @lum, @baro,
-            @pm1_0, @pm2_5, @pm10, chamber_temp,
+            @pm1_0, @pm2_5, @pm10, @chamber_temp,
             @created_at
         )
     `);
