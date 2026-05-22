@@ -126,6 +126,7 @@ function normalizeSensorHealth(endpoint: string, payload: ParsedJSON) {
         ozone: payload["ozone sensor"] ? 1 : 0,
         air_velocity: payload["air velocity sensor"] ? 1 : 0,
         particulate_matter: payload["particulate matter sensor"] ? 1 : 0,
+        chamber_temp: payload["chamber temp sensor"] ? 1 : 0,
         updated_at: unixNow(),
     } as SensorHealth;
 }

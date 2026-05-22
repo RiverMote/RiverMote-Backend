@@ -24,6 +24,7 @@ export interface Sample {
     pm1_0: number | null;
     pm2_5: number | null;
     pm10: number | null;
+    chamber_temp: number | null;
     // Server receive time
     created_at: number;
 }
@@ -51,6 +52,7 @@ export interface SensorHealth {
     ozone: 0 | 1;
     air_velocity: 0 | 1;
     particulate_matter: 0 | 1;
+    chamber_temp: 0 | 1;
     updated_at: number;
 }
 
@@ -91,14 +93,14 @@ export function createDb(dbPath: string) {
             battery_v, battery_pct,
             water_temp, turbidity, tds,
             air_temp, humidity, air_velocity, ozone, uv, lum, baro,
-            pm1_0, pm2_5, pm10,
+            pm1_0, pm2_5, pm10, chamber_temp,
             created_at
         ) VALUES (
             @endpoint, @unix_time, @millis,
             @battery_v, @battery_pct,
             @water_temp, @turbidity, @tds,
             @air_temp, @humidity, @air_velocity, @ozone, @uv, @lum, @baro,
-            @pm1_0, @pm2_5, @pm10,
+            @pm1_0, @pm2_5, @pm10, chamber_temp,
             @created_at
         )
     `);
@@ -136,12 +138,12 @@ export function createDb(dbPath: string) {
             endpoint, unix_time,
             temperature, turbidity, tds, environmental,
             ozone, air_velocity, particulate_matter,
-            updated_at
+            chamber_temp, updated_at
         ) VALUES (
             @endpoint, @unix_time,
             @temperature, @turbidity, @tds, @environmental,
             @ozone, @air_velocity, @particulate_matter,
-            @updated_at
+            @chamber_temp, @updated_at
         )
     `);
 
