@@ -17,6 +17,7 @@ export interface Sample {
     air_temp: number | null;
     humidity: number | null;
     air_velocity: number | null;
+    air_velocity_peak: number | null;
     ozone: number | null;
     uv: number | null;
     lum: number | null;
@@ -92,14 +93,14 @@ export function createDb(dbPath: string) {
             endpoint, unix_time, millis,
             battery_v, battery_pct,
             water_temp, turbidity, tds,
-            air_temp, humidity, air_velocity, ozone, uv, lum, baro,
+            air_temp, humidity, air_velocity, air_velocity_peak, ozone, uv, lum, baro,
             pm1_0, pm2_5, pm10, chamber_temp,
             created_at
         ) VALUES (
             @endpoint, @unix_time, @millis,
             @battery_v, @battery_pct,
             @water_temp, @turbidity, @tds,
-            @air_temp, @humidity, @air_velocity, @ozone, @uv, @lum, @baro,
+            @air_temp, @humidity, @air_velocity, @air_velocity_peak, @ozone, @uv, @lum, @baro,
             @pm1_0, @pm2_5, @pm10, @chamber_temp,
             @created_at
         )
