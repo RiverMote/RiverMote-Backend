@@ -18,7 +18,7 @@ const config = {
         user: process.env.MQTT_USER,
         pass: process.env.MQTT_PASS,
         tls: (process.env.MQTT_TLS ?? "true") !== "false",
-        allowSelfSigned: process.env.MQTT_ALLOW_SELF_SIGNED === "true",
+        allowSelfSigned: process.env.MQTT_ALLOW_SELF_SIGNED === "false",
     },
 };
 
@@ -56,25 +56,43 @@ function unixNow(): number {
 }
 
 /**
- * Parse a query-string limit value.
+ * Parse a query-string limit value and report if it was capped.
  * @param raw starting string from query parameter
  * @param defaultValue default value to return if raw is undefined or invalid
- * @param maxValue optional maximum value to cap the result at
- * @returns parsed integer limit, or null for 'all'/'0', or defaultValue if invalid/undefined
+ * @param maxValue maximum value to cap the result at
+ * @returns parsed integer limit, or null for 'all'/'0', or defaultValue if invalid/undefined,
+ * and a boolean indicating if the result was capped at maxValue
  */
-function parseLimit(raw: string | undefined, defaultValue: number, maxValue?: number): number | null {
+function parseLimit(raw: string | undefined, defaultValue: number, maxValue: number): { limit: number | null; truncated: boolean } {
     if (!raw) {
-        return defaultValue;
+        return { limit: defaultValue, truncated: false };
     }
     if (raw === "all" || raw === "0") {
-        return null;
+        return { limit: null, truncated: false };
     }
 
     const parsed = parseInt(raw, 10);
     if (Number.isNaN(parsed)) {
-        return defaultValue;
+        return { limit: defaultValue, truncated: false };
     }
-    return maxValue ? Math.min(parsed, maxValue) : parsed;
+    if (parsed > maxValue) {
+        return { limit: maxValue, truncated: true };
+    }
+    return { limit: parsed, truncated: false };
+}
+
+/**
+ * Parse optional integer query params.
+ */
+function parseOptionalQueryInt(raw: string | undefined): { value: number | undefined; valid: boolean } {
+    if (raw === undefined || raw === "") {
+        return { value: undefined, valid: true };
+    }
+    const parsed = parseInt(raw, 10);
+    if (Number.isNaN(parsed)) {
+        return { value: undefined, valid: false };
+    }
+    return { value: parsed, valid: true };
 }
 
 /**
@@ -219,15 +237,24 @@ app.get("/api/health", requireAuth, (req: Request, res: Response) => {
     res.json(db.listHealth());
 });
 
-// GET /api/samples?endpoint=<id>&limit=<n|all>  -> samples for a device, limited to n or all
+// GET /api/samples?endpoint=<id>&limit=<n|all>&start=<unix>&end=<unix>
+// -> samples for a device, filtered by unix_time range and limited to n or all
 app.get("/api/samples", (req: Request, res: Response) => {
-    const { endpoint, limit: rawLimit } = req.query as Record<string, string | undefined>;
-    if (!endpoint) {
-        return res.status(400).json({ error: "endpoint required" });
+    const { endpoint, limit: rawLimit, start: rawStart, end: rawEnd } = req.query as Record<string, string | undefined>;
+    const start = parseOptionalQueryInt(rawStart);
+    const end = parseOptionalQueryInt(rawEnd);
+    if (!start.valid || !end.valid) {
+        return res.status(400).json({ error: "start and end must be unix timestamps" });
     }
 
-    const limit = parseLimit(rawLimit, 100, 5000);
-    res.json(db.listSamples(endpoint, limit));
+    if (!endpoint) {
+        // No endpoint: return the most recent sample per device (ignore limit/start/end)
+        return res.json({ samples: db.listLatestSamples(), truncated: false });
+    }
+
+    const { limit, truncated } = parseLimit(rawLimit, 100, 5000);
+    const samples = db.listSamples(endpoint, limit, start.value, end.value);
+    res.json({ samples, truncated });
 });
 
 // GET /api/commands?endpoint=<id>&status=<sent|acked|all>&limit=<n|all>  -> commands for a device, filtered by status and limited to n or all
@@ -237,8 +264,9 @@ app.get("/api/commands", requireAuth, (req: Request, res: Response) => {
         return res.status(400).json({ error: "endpoint required" });
     }
 
-    const limit = parseLimit(rawLimit, 50, 1000);
-    res.json(db.listCommands(endpoint, status, limit));
+    const { limit, truncated } = parseLimit(rawLimit, 50, 1000);
+    const commands = db.listCommands(endpoint, status, limit);
+    res.json({ commands, truncated });
 });
 
 // POST /api/commands  -> send a command to a device, with optional payload

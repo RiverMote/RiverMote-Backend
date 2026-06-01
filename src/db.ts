@@ -176,9 +176,24 @@ export function createDb(dbPath: string) {
     // SQLite treats LIMIT -1 as "no limit", which lets a single prepared statement serve both the limited and unlimited cases
     const selectSamples = db.prepare(`
         SELECT * FROM samples
-        WHERE endpoint = ?
+        WHERE endpoint = @endpoint
+            AND (@start IS NULL OR unix_time >= @start)
+            AND (@end IS NULL OR unix_time <= @end)
         ORDER BY unix_time DESC
-        LIMIT ?
+        LIMIT @limit
+    `);
+
+    // Select the most recent sample for each endpoint, ordered by sample time descending
+    const selectLatestSamples = db.prepare(`
+        SELECT s.*
+        FROM samples s
+        JOIN (
+            SELECT endpoint, MAX(unix_time) AS max_time
+            FROM samples
+            GROUP BY endpoint
+        ) latest
+            ON latest.endpoint = s.endpoint AND latest.max_time = s.unix_time
+        ORDER BY s.unix_time DESC
     `);
 
     const selectCommands = db.prepare(`
@@ -240,8 +255,20 @@ export function createDb(dbPath: string) {
         upsertDeviceInfo: (info: DeviceInfo) => upsertDeviceInfo.run(info),
 
         // Pass null for limit to return all rows
-        listSamples: (endpoint: string, limit: number | null): Sample[] =>
-            selectSamples.all(endpoint, limit ?? -1) as Sample[],
+        listSamples: (
+            endpoint: string,
+            limit: number | null,
+            start: number | null | undefined,
+            end: number | null | undefined,
+        ): Sample[] =>
+            selectSamples.all({
+                endpoint,
+                limit: limit ?? -1,
+                start: start ?? null,
+                end: end ?? null,
+            }) as Sample[],
+
+        listLatestSamples: (): Sample[] => selectLatestSamples.all() as Sample[],
 
         // Pass null for limit to return all rows
         // status: undefined = all, "active" = pending+sent, otherwise exact match
