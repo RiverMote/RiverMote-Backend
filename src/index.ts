@@ -63,7 +63,11 @@ function unixNow(): number {
  * @returns parsed integer limit, or null for 'all'/'0', or defaultValue if invalid/undefined,
  * and a boolean indicating if the result was capped at maxValue
  */
-function parseLimit(raw: string | undefined, defaultValue: number, maxValue: number): { limit: number | null; truncated: boolean } {
+function parseLimit(
+    raw: string | undefined,
+    defaultValue: number,
+    maxValue: number,
+): { limit: number | null; truncated: boolean } {
     if (!raw) {
         return { limit: defaultValue, truncated: false };
     }
