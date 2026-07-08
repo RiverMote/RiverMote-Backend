@@ -149,6 +149,7 @@ function normalizeSensorHealth(endpoint: string, payload: ParsedJSON) {
         air_velocity: payload["air velocity sensor"] ? 1 : 0,
         particulate_matter: payload["particulate matter sensor"] ? 1 : 0,
         chamber_temp: payload["chamber temp sensor"] ? 1 : 0,
+        uv: payload["uv sensor"] ? 1 : 0,
         updated_at: unixNow(),
     } as SensorHealth;
 }
@@ -273,7 +274,7 @@ app.get("/api/commands", requireAuth, (req: Request, res: Response) => {
     res.json({ commands, truncated });
 });
 
-// POST /api/commands  -> send a command to a device, with optional payload
+// POST /api/commands -> send a command to a device, with optional payload
 app.post("/api/commands", requireAuth, (req: Request, res: Response) => {
     // Response body could have any shape (so we treat it as generic JSON),
     // but we require at least endpoint and cmd to be present and valid

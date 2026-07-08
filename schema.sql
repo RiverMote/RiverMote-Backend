@@ -21,12 +21,15 @@ CREATE TABLE IF NOT EXISTS samples (
     -- Environment
     air_temp REAL,
     humidity REAL,
+    baro REAL,
+    alt REAL,
+    aqi REAL,
+    voc REAL,
+    co2 REAL,
+    uv REAL,
     air_velocity REAL,
     air_velocity_peak REAL,
     ozone REAL,
-    uv REAL,
-    lum REAL,
-    baro REAL,
     pm1_0 REAL,
     pm2_5 REAL,
     pm10 REAL,
@@ -67,6 +70,7 @@ CREATE TABLE IF NOT EXISTS sensor_health (
     air_velocity INTEGER NOT NULL DEFAULT 0,
     particulate_matter INTEGER NOT NULL DEFAULT 0,
     chamber_temp INTEGER NOT NULL DEFAULT 0,
+    uv INTEGER NOT NULL DEFAULT 0,
     updated_at INTEGER NOT NULL
 );
 
@@ -75,5 +79,6 @@ CREATE TABLE IF NOT EXISTS device_info (
     endpoint TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     lat REAL,
-    lng REAL
+    lng REAL,
+    hidden INTEGER NOT NULL DEFAULT 0
 );

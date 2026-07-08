@@ -16,12 +16,15 @@ export interface Sample {
     // Environment
     air_temp: number | null;
     humidity: number | null;
+    baro: number | null;
+    alt: number | null;
+    aqi: number | null;
+    voc: number | null;
+    co2: number | null;
+    uv: number | null;
     air_velocity: number | null;
     air_velocity_peak: number | null;
     ozone: number | null;
-    uv: number | null;
-    lum: number | null;
-    baro: number | null;
     pm1_0: number | null;
     pm2_5: number | null;
     pm10: number | null;
@@ -54,6 +57,7 @@ export interface SensorHealth {
     air_velocity: 0 | 1;
     particulate_matter: 0 | 1;
     chamber_temp: 0 | 1;
+    uv: 0 | 1;
     updated_at: number;
 }
 
@@ -93,14 +97,18 @@ export function createDb(dbPath: string) {
             endpoint, unix_time, millis,
             battery_v, battery_pct,
             water_temp, turbidity, tds,
-            air_temp, humidity, air_velocity, air_velocity_peak, ozone, uv, lum, baro,
+            air_temp, humidity, baro, alt,
+            aqi, voc, co2, uv,
+            air_velocity, air_velocity_peak, ozone,
             pm1_0, pm2_5, pm10, chamber_temp,
             created_at
         ) VALUES (
             @endpoint, @unix_time, @millis,
             @battery_v, @battery_pct,
             @water_temp, @turbidity, @tds,
-            @air_temp, @humidity, @air_velocity, @air_velocity_peak, @ozone, @uv, @lum, @baro,
+            @air_temp, @humidity, @baro, @alt,
+            @aqi, @voc, @co2, @uv,
+            @air_velocity, @air_velocity_peak, @ozone,
             @pm1_0, @pm2_5, @pm10, @chamber_temp,
             @created_at
         )
@@ -139,12 +147,12 @@ export function createDb(dbPath: string) {
             endpoint, unix_time,
             temperature, turbidity, tds, environmental,
             ozone, air_velocity, particulate_matter,
-            chamber_temp, updated_at
+            chamber_temp, uv, updated_at
         ) VALUES (
             @endpoint, @unix_time,
             @temperature, @turbidity, @tds, @environmental,
             @ozone, @air_velocity, @particulate_matter,
-            @chamber_temp, @updated_at
+            @chamber_temp, @uv, @updated_at
         )
     `);
 
