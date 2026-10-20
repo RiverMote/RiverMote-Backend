@@ -62,6 +62,9 @@ CREATE INDEX IF NOT EXISTS idx_commands_endpoint_status
 CREATE TABLE IF NOT EXISTS sensor_health (
     endpoint TEXT PRIMARY KEY,
     unix_time INTEGER NOT NULL,
+    millis INTEGER,
+    battery_v REAL,
+    battery_pct INTEGER,
     temperature INTEGER NOT NULL DEFAULT 0, -- boolean
     turbidity INTEGER NOT NULL DEFAULT 0,
     tds INTEGER NOT NULL DEFAULT 0,

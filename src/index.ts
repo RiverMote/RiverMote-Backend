@@ -141,6 +141,9 @@ function normalizeSensorHealth(endpoint: string, payload: ParsedJSON) {
     return {
         endpoint,
         unix_time: payload.unix_time ?? unixNow(),
+        millis: payload.millis,
+        battery_v: payload.battery_v,
+        battery_pct: payload.battery_pct,
         temperature: payload["temperature sensor"] ? 1 : 0,
         turbidity: payload["turbidity sensor"] ? 1 : 0,
         tds: payload["TDS sensor"] ? 1 : 0,

@@ -49,6 +49,9 @@ export interface Command {
 export interface SensorHealth {
     endpoint: string;
     unix_time: number;
+    millis: number | null;
+    battery_v: number | null;
+    battery_pct: number | null;
     temperature: 0 | 1;
     turbidity: 0 | 1;
     tds: 0 | 1;
@@ -144,12 +147,12 @@ export function createDb(dbPath: string) {
     // INSERT OR REPLACE overwrites the existing row for this endpoint (upsert by primary key)
     const upsertHealth = db.prepare<SensorHealth>(`
         INSERT OR REPLACE INTO sensor_health (
-            endpoint, unix_time,
+            endpoint, unix_time, millis, battery_v, battery_pct,
             temperature, turbidity, tds, environmental,
             ozone, air_velocity, particulate_matter,
             chamber_temp, uv, updated_at
         ) VALUES (
-            @endpoint, @unix_time,
+            @endpoint, @unix_time, @millis, @battery_v, @battery_pct,
             @temperature, @turbidity, @tds, @environmental,
             @ozone, @air_velocity, @particulate_matter,
             @chamber_temp, @uv, @updated_at
